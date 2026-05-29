@@ -10,7 +10,7 @@ public class GalleryFolderTest {
         GalleryFolder folder = GalleryFolder.fromDisplayName("Receipts 2026");
 
         assertEquals("Receipts 2026", folder.getDisplayName());
-        assertEquals("Pictures/Takit/Receipts 2026/", folder.getRelativePath());
+        assertEquals("DCIM/Takit/Receipts 2026/", folder.getRelativePath());
     }
 
     @Test
@@ -18,7 +18,7 @@ public class GalleryFolderTest {
         GalleryFolder folder = GalleryFolder.fromDisplayName("Travel/Seoul:May");
 
         assertEquals("Travel-Seoul-May", folder.getDisplayName());
-        assertEquals("Pictures/Takit/Travel-Seoul-May/", folder.getRelativePath());
+        assertEquals("DCIM/Takit/Travel-Seoul-May/", folder.getRelativePath());
     }
 
     @Test
@@ -26,7 +26,7 @@ public class GalleryFolderTest {
         GalleryFolder folder = GalleryFolder.fromDisplayName("   ");
 
         assertEquals("Inbox", folder.getDisplayName());
-        assertEquals("Pictures/Takit/Inbox/", folder.getRelativePath());
+        assertEquals("DCIM/Takit/Inbox/", folder.getRelativePath());
     }
 
     @Test
@@ -38,10 +38,18 @@ public class GalleryFolderTest {
     }
 
     @Test
-    public void fromRelativePathRejectsNonPictureRoots() {
+    public void fromRelativePathAcceptsDcimCameraAlbums() {
+        GalleryFolder folder = GalleryFolder.fromRelativePath("DCIM/Camera/");
+
+        assertEquals("Camera", folder.getDisplayName());
+        assertEquals("DCIM/Camera/", folder.getRelativePath());
+    }
+
+    @Test
+    public void fromRelativePathRejectsNonGalleryRoots() {
         GalleryFolder folder = GalleryFolder.fromRelativePath("Download/Receipts/");
 
         assertEquals("Inbox", folder.getDisplayName());
-        assertEquals("Pictures/Takit/Inbox/", folder.getRelativePath());
+        assertEquals("DCIM/Takit/Inbox/", folder.getRelativePath());
     }
 }

@@ -11,20 +11,41 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MediaStoreImageWriter {
+    private static final AtomicInteger SEQUENCE = new AtomicInteger();
+
     private MediaStoreImageWriter() {
     }
 
     public static Uri createPendingImage(ContentResolver resolver, GalleryFolder folder, String prefix, String extension, String mimeType) {
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        return createImage(resolver, folder, prefix, extension, mimeType, true);
+    }
+
+    public static Uri createCameraOutputImage(ContentResolver resolver, GalleryFolder folder) {
+        return createImage(resolver, folder, "TAKIT_CAMERA", ".jpg", "image/jpeg", false);
+    }
+
+    public static Uri createImage(ContentResolver resolver, GalleryFolder folder, String prefix, String extension, String mimeType, boolean pending) {
+        long now = System.currentTimeMillis();
+        int sequence = Math.floorMod(SEQUENCE.incrementAndGet(), 1000);
         ContentValues values = new ContentValues();
-        values.put(MediaStore.Images.Media.DISPLAY_NAME, prefix + "_" + timestamp + extension);
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, buildDisplayName(prefix, extension, now, sequence));
         values.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
         values.put(MediaStore.Images.Media.RELATIVE_PATH, folder.getRelativePath());
-        values.put(MediaStore.Images.Media.IS_PENDING, 1);
-        values.put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000L);
+        values.put(MediaStore.Images.Media.IS_PENDING, pending ? 1 : 0);
+        values.put(MediaStore.Images.Media.DATE_ADDED, now / 1000L);
         return resolver.insert(MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values);
+    }
+
+    public static String buildDisplayName(String prefix, String extension, long timestampMillis, int sequence) {
+        String normalizedExtension = extension.startsWith(".") ? extension : "." + extension;
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US);
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String timestamp = formatter.format(new Date(timestampMillis));
+        return String.format(Locale.US, "%s_%s_%03d%s", prefix, timestamp, Math.floorMod(sequence, 1000), normalizedExtension);
     }
 
     public static Uri savePng(ContentResolver resolver, GalleryFolder folder, Bitmap bitmap, String prefix) throws IOException {

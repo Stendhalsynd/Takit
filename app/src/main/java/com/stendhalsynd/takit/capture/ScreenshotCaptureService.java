@@ -46,7 +46,8 @@ public class ScreenshotCaptureService extends Service {
         targetFolder = GalleryFolder.fromRelativePath(intent.getStringExtra(CaptureActions.EXTRA_FOLDER_PATH));
         int resultCode = intent.getIntExtra(CaptureActions.EXTRA_RESULT_CODE, 0);
         Intent resultData = intent.getParcelableExtra(CaptureActions.EXTRA_RESULT_DATA);
-        beginCapture(resultCode, resultData);
+        long delayMs = Math.max(0L, intent.getLongExtra(CaptureActions.EXTRA_CAPTURE_DELAY_MS, 0L));
+        handler.postDelayed(() -> beginCapture(resultCode, resultData), delayMs);
         return START_NOT_STICKY;
     }
 

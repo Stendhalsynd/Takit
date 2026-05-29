@@ -7,6 +7,7 @@ public final class CaptureActions {
     public static final String EXTRA_RESULT_CODE = "extra_result_code";
     public static final String EXTRA_RESULT_DATA = "extra_result_data";
     public static final String EXTRA_FOLDER_PATH = "extra_folder_path";
+    public static final String EXTRA_CAPTURE_DELAY_MS = "extra_capture_delay_ms";
 
     private CaptureActions() {
     }

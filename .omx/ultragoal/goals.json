@@ -1,0 +1,36 @@
+{
+  "aggregateObjective": "Complete the durable Takit post-install fix plan recorded in .omx/ultragoal/goals.json and .omx/ultragoal/ledger.jsonl.",
+  "codexGoalMode": "aggregate",
+  "goals": [
+    {
+      "id": "G001",
+      "title": "Fix gallery folder model and folder picker entry points",
+      "objective": "Use DCIM/Takit as the default save root, import existing MediaStore gallery image folders including DCIM and Pictures, and make the bubble folder button open folder selection.",
+      "status": "complete"
+    },
+    {
+      "id": "G002",
+      "title": "Fix camera capture persistence",
+      "objective": "Make ACTION_IMAGE_CAPTURE save reliably into the selected MediaStore folder by using a camera-writable output URI, unique names, and proper URI grants/cleanup.",
+      "status": "complete"
+    },
+    {
+      "id": "G003",
+      "title": "Improve screenshot capture flow",
+      "objective": "Keep required MediaProjection consent, prefer full-display capture where supported, explain the unavoidable consent, and delay one-frame capture until system transition UI has cleared.",
+      "status": "complete"
+    },
+    {
+      "id": "G004",
+      "title": "Replace app and bubble imagery",
+      "objective": "Generate a Codex-created raster visual asset and use it for the launcher icon, foreground notification, and bubble mark.",
+      "status": "complete"
+    },
+    {
+      "id": "G005",
+      "title": "Final verification and review",
+      "objective": "Run regression tests, lint, release build, ai-slop-cleaner scoped cleanup, and independent review before reporting completion.",
+      "status": "complete"
+    }
+  ]
+}

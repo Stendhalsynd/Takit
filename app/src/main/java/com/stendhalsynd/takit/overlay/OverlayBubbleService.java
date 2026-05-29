@@ -9,17 +9,21 @@ import android.graphics.PixelFormat;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.stendhalsynd.takit.R;
+import com.stendhalsynd.takit.MainActivity;
 import com.stendhalsynd.takit.capture.CaptureActions;
 import com.stendhalsynd.takit.capture.CaptureActivity;
 import com.stendhalsynd.takit.capture.CaptureNotification;
@@ -27,7 +31,9 @@ import com.stendhalsynd.takit.storage.FolderRepository;
 
 public class OverlayBubbleService extends Service {
     private static final int NOTIFICATION_ID = 4201;
+    private static final long SCREENSHOT_BUBBLE_HIDE_MS = 5500L;
 
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private WindowManager windowManager;
     private LinearLayout bubbleView;
     private WindowManager.LayoutParams layoutParams;
@@ -109,12 +115,9 @@ public class OverlayBubbleService extends Service {
         root.setGravity(Gravity.CENTER_VERTICAL);
         root.setPadding(dp(4), dp(4), dp(4), dp(4));
 
-        TextView bubble = new BubbleTextView(this);
-        bubble.setText("T");
-        bubble.setTextColor(Color.WHITE);
-        bubble.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        bubble.setTextSize(22);
-        bubble.setGravity(Gravity.CENTER);
+        ImageView bubble = new BubbleImageView(this);
+        bubble.setImageResource(R.drawable.takit_bubble_icon);
+        bubble.setScaleType(ImageView.ScaleType.CENTER_CROP);
         bubble.setBackground(circle(0xFF006D77));
         root.addView(bubble, new LinearLayout.LayoutParams(dp(56), dp(56)));
 
@@ -133,7 +136,7 @@ public class OverlayBubbleService extends Service {
         actionPanel.addView(camera);
 
         TextView folder = actionButton("폴더");
-        folder.setOnClickListener(v -> showCurrentFolder());
+        folder.setOnClickListener(v -> chooseFolder());
         actionPanel.addView(folder);
 
         bubble.setOnClickListener(view -> togglePanel());
@@ -177,15 +180,28 @@ public class OverlayBubbleService extends Service {
 
     private void launchCapture(String action) {
         actionPanel.setVisibility(View.GONE);
+        if (CaptureActions.ACTION_SCREENSHOT.equals(action)) {
+            bubbleView.setVisibility(View.INVISIBLE);
+            handler.postDelayed(() -> {
+                if (bubbleView != null) {
+                    bubbleView.setVisibility(View.VISIBLE);
+                }
+            }, SCREENSHOT_BUBBLE_HIDE_MS);
+        }
         Intent intent = new Intent(this, CaptureActivity.class);
         intent.setAction(action);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
     }
 
-    private void showCurrentFolder() {
+    private void chooseFolder() {
+        actionPanel.setVisibility(View.GONE);
         String path = new FolderRepository(this).getSelectedFolder().getRelativePath();
         Toast.makeText(this, path, Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setAction(MainActivity.ACTION_CHOOSE_FOLDER);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
     }
 
     private TextView actionButton(String label) {
@@ -221,8 +237,8 @@ public class OverlayBubbleService extends Service {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private static final class BubbleTextView extends TextView {
-        BubbleTextView(Context context) {
+    private static final class BubbleImageView extends ImageView {
+        BubbleImageView(Context context) {
             super(context);
         }
 

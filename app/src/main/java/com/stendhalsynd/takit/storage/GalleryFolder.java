@@ -4,7 +4,8 @@ import java.util.Objects;
 
 public final class GalleryFolder {
     public static final String PICTURES_DIRECTORY = "Pictures";
-    public static final String APP_ROOT = PICTURES_DIRECTORY + "/Takit";
+    public static final String DCIM_DIRECTORY = "DCIM";
+    public static final String APP_ROOT = DCIM_DIRECTORY + "/Takit";
     public static final String DEFAULT_NAME = "Inbox";
 
     private final String displayName;
@@ -62,10 +63,17 @@ public final class GalleryFolder {
         if (!cleaned.endsWith("/")) {
             cleaned = cleaned + "/";
         }
-        if (!cleaned.startsWith(PICTURES_DIRECTORY + "/")) {
+        if (!isSupportedGalleryPath(cleaned)) {
             return fallback;
         }
         return cleaned;
+    }
+
+    public static boolean isSupportedGalleryPath(String relativePath) {
+        if (relativePath == null) {
+            return false;
+        }
+        return relativePath.startsWith(DCIM_DIRECTORY + "/") || relativePath.startsWith(PICTURES_DIRECTORY + "/");
     }
 
     @Override

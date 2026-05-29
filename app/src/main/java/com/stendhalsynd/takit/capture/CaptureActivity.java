@@ -1,9 +1,12 @@
 package com.stendhalsynd.takit.capture;
 
 import android.app.Activity;
+import android.content.ClipData;
 import android.content.Intent;
+import android.media.projection.MediaProjectionConfig;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.widget.Toast;
@@ -15,6 +18,7 @@ import com.stendhalsynd.takit.storage.MediaStoreImageWriter;
 public class CaptureActivity extends Activity {
     private static final int REQUEST_CAMERA = 3001;
     private static final int REQUEST_SCREENSHOT = 3002;
+    private static final long SCREENSHOT_CAPTURE_DELAY_MS = 900L;
     private static final String STATE_CAPTURE_STARTED = "state_capture_started";
     private static final String STATE_PENDING_CAMERA_URI = "state_pending_camera_uri";
 
@@ -67,13 +71,7 @@ public class CaptureActivity extends Activity {
     private void startCameraCapture() {
         captureStarted = true;
         GalleryFolder folder = folderRepository.getSelectedFolder();
-        pendingCameraUri = MediaStoreImageWriter.createPendingImage(
-                getContentResolver(),
-                folder,
-                "TAKIT_CAMERA",
-                ".jpg",
-                "image/jpeg"
-        );
+        pendingCameraUri = MediaStoreImageWriter.createCameraOutputImage(getContentResolver(), folder);
         if (pendingCameraUri == null) {
             Toast.makeText(this, "사진 저장 위치를 만들 수 없습니다.", Toast.LENGTH_LONG).show();
             finish();
@@ -81,6 +79,7 @@ public class CaptureActivity extends Activity {
         }
         Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, pendingCameraUri);
+        cameraIntent.setClipData(ClipData.newUri(getContentResolver(), "Takit camera output", pendingCameraUri));
         cameraIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
         if (cameraIntent.resolveActivity(getPackageManager()) == null) {
             MediaStoreImageWriter.deleteQuietly(getContentResolver(), pendingCameraUri);
@@ -96,7 +95,6 @@ public class CaptureActivity extends Activity {
             return;
         }
         if (resultCode == RESULT_OK) {
-            MediaStoreImageWriter.publish(getContentResolver(), pendingCameraUri);
             Toast.makeText(this, "사진이 선택한 폴더에 저장됐습니다.", Toast.LENGTH_SHORT).show();
         } else {
             MediaStoreImageWriter.deleteQuietly(getContentResolver(), pendingCameraUri);
@@ -107,7 +105,14 @@ public class CaptureActivity extends Activity {
     private void startScreenshotConsent() {
         captureStarted = true;
         MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
-        startActivityForResult(manager.createScreenCaptureIntent(), REQUEST_SCREENSHOT);
+        Toast.makeText(this, "Android 보안상 화면 캡처 동의가 필요합니다. 전체 화면 공유를 허용해 주세요.", Toast.LENGTH_LONG).show();
+        Intent consentIntent;
+        if (Build.VERSION.SDK_INT >= 34) {
+            consentIntent = manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay());
+        } else {
+            consentIntent = manager.createScreenCaptureIntent();
+        }
+        startActivityForResult(consentIntent, REQUEST_SCREENSHOT);
     }
 
     private void handleScreenshotResult(int resultCode, Intent data) {
@@ -119,6 +124,7 @@ public class CaptureActivity extends Activity {
         service.putExtra(CaptureActions.EXTRA_RESULT_CODE, resultCode);
         service.putExtra(CaptureActions.EXTRA_RESULT_DATA, data);
         service.putExtra(CaptureActions.EXTRA_FOLDER_PATH, folderRepository.getSelectedFolder().getRelativePath());
+        service.putExtra(CaptureActions.EXTRA_CAPTURE_DELAY_MS, SCREENSHOT_CAPTURE_DELAY_MS);
         startForegroundService(service);
     }
 }

@@ -71,12 +71,15 @@ public final class FolderRepository {
         return context.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
     }
 
-    public int importExistingPictureFolders() {
+    public int importExistingGalleryFolders() {
         if (!canReadMediaFolders()) {
             return 0;
         }
         Uri collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
-        String[] projection = {MediaStore.Images.Media.RELATIVE_PATH};
+        String[] projection = {
+                MediaStore.Images.Media.RELATIVE_PATH,
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME
+        };
         Set<String> imported = new LinkedHashSet<>(preferences.getStringSet(KEY_FOLDERS, Collections.emptySet()));
         int before = imported.size();
         try (Cursor cursor = context.getContentResolver().query(
@@ -84,7 +87,7 @@ public final class FolderRepository {
                 projection,
                 null,
                 null,
-                null
+                MediaStore.Images.Media.DATE_MODIFIED + " DESC"
         )) {
             if (cursor == null) {
                 return 0;
@@ -92,13 +95,17 @@ public final class FolderRepository {
             int pathColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH);
             while (cursor.moveToNext()) {
                 String path = cursor.getString(pathColumn);
-                if (path != null && path.startsWith("Pictures/")) {
+                if (GalleryFolder.isSupportedGalleryPath(path)) {
                     imported.add(GalleryFolder.fromRelativePath(path).getRelativePath());
                 }
             }
         }
         preferences.edit().putStringSet(KEY_FOLDERS, imported).apply();
         return imported.size() - before;
+    }
+
+    public int importExistingPictureFolders() {
+        return importExistingGalleryFolders();
     }
 
     private void seedDefaults() {

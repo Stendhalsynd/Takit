@@ -2,6 +2,7 @@ package com.stendhalsynd.takit;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
@@ -29,6 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends Activity {
+    public static final String ACTION_CHOOSE_FOLDER = "com.stendhalsynd.takit.action.CHOOSE_FOLDER";
+
     private static final int REQUEST_READ_MEDIA = 2001;
     private static final int REQUEST_NOTIFICATIONS = 2002;
 
@@ -46,6 +49,14 @@ public class MainActivity extends Activity {
         setContentView(buildContentView());
         refreshFolders();
         requestNotificationPermissionIfNeeded();
+        handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntent(intent);
     }
 
     @Override
@@ -57,8 +68,8 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_READ_MEDIA && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            importPictureFolders();
+        if (requestCode == REQUEST_READ_MEDIA && hasAnyGranted(grantResults)) {
+            importGalleryFolders();
         }
     }
 
@@ -175,16 +186,16 @@ public class MainActivity extends Activity {
 
     private void ensureReadPermissionThenImport() {
         if (folderRepository.canReadMediaFolders()) {
-            importPictureFolders();
+            importGalleryFolders();
             return;
         }
-        requestPermissions(new String[]{readMediaPermission()}, REQUEST_READ_MEDIA);
+        requestPermissions(readMediaPermissions(), REQUEST_READ_MEDIA);
     }
 
-    private void importPictureFolders() {
-        int imported = folderRepository.importExistingPictureFolders();
+    private void importGalleryFolders() {
+        int imported = folderRepository.importExistingGalleryFolders();
         refreshFolders();
-        Toast.makeText(this, imported + "개 폴더를 가져왔습니다.", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, imported + "개 갤러리 폴더를 가져왔습니다.", Toast.LENGTH_SHORT).show();
     }
 
     private void startOverlayBubble() {
@@ -215,11 +226,52 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String readMediaPermission() {
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
-            return Manifest.permission.READ_MEDIA_IMAGES;
+    private void handleIntent(Intent intent) {
+        if (intent != null && ACTION_CHOOSE_FOLDER.equals(intent.getAction())) {
+            showFolderChooserDialog();
         }
-        return Manifest.permission.READ_EXTERNAL_STORAGE;
+    }
+
+    private void showFolderChooserDialog() {
+        refreshFolders();
+        List<String> labels = new ArrayList<>();
+        for (GalleryFolder folder : currentFolders) {
+            labels.add(folder.getDisplayName() + "\n" + folder.getRelativePath());
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("저장 폴더 선택")
+                .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+                    if (which >= 0 && which < currentFolders.size()) {
+                        folderRepository.saveSelectedFolder(currentFolders.get(which));
+                        refreshFolders();
+                        Toast.makeText(this, currentFolders.get(which).getDisplayName() + " 선택됨", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setPositiveButton("기존 폴더 가져오기", (dialog, which) -> ensureReadPermissionThenImport())
+                .setNegativeButton("닫기", null)
+                .show();
+    }
+
+    private String[] readMediaPermissions() {
+        if (android.os.Build.VERSION.SDK_INT >= 34) {
+            return new String[]{
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            };
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            return new String[]{Manifest.permission.READ_MEDIA_IMAGES};
+        }
+        return new String[]{Manifest.permission.READ_EXTERNAL_STORAGE};
+    }
+
+    private boolean hasAnyGranted(int[] grantResults) {
+        for (int result : grantResults) {
+            if (result == PackageManager.PERMISSION_GRANTED) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private TextView text(String value, int sp, int style) {
