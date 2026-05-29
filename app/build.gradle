@@ -1,0 +1,38 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.stendhalsynd.takit"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.stendhalsynd.takit"
+        minSdk 29
+        targetSdk 35
+        versionCode 1
+        versionName "1.0.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+}
