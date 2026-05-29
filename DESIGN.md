@@ -31,9 +31,9 @@
 - Folder add panel: dashed outline container with two secondary actions for importing/syncing and direct name entry.
 - Favorite folders: pastel compact cards, max three per row, with folder name and relative path. Do not show item counts by default.
 - All gallery folders: white list card with compact rows, folder name, relative path, and select/favorite actions. Do not show item counts by default.
-- Sorting controls: segmented chips with clear spacing. The active sort and direction use a filled lavender state with white text; inactive chips stay white with a subtle border.
+- Sorting controls: segmented chips with clear spacing. The active sort and direction use a filled lavender state, white text, and a leading check mark; inactive chips stay white with a visible border and dark text.
 - Bottom navigation: fixed rounded pill with Home, Folder, Settings tabs. Tab hit areas should be wide and at least 44dp tall.
-- Overlay mini window: centered near the top, white rounded card, same action colors as the main UI. It has no close icon; tapping outside the panel closes it.
+- Overlay mini window: centered near the top, white rounded card, same action colors as the main UI. It has no close icon; tapping outside the panel closes it. It includes camera, screenshot, app-open, and favorite-folder switching actions.
 - Bubble dismiss target: bottom-center circular lavender area shown only while dragging. The animated circle must sit inside a larger transparent container so selected-scale animation is never clipped by square window bounds.
 
 ## Behavior Rules
@@ -44,3 +44,5 @@
 - Long folder lists are paginated in groups of 8.
 - Favorite toggles must preserve the current folder tab query, sort, direction, page, and scroll position.
 - Bubble actions should never expand off-screen. Clicking the bubble opens the centered mini window; closing the mini window returns the bubble to the position it was clicked from. Dragging to the bottom dismiss target turns the bubble off.
+- Bubble folder switching shows favorite folders only. Do not include search or the full gallery list in the overlay mini window.
+- Screenshot capture from the bubble should reuse an active MediaProjection session and avoid opening the Takit app. If no session is active, Android's required consent screen is shown once, then the app task is moved back before capture.

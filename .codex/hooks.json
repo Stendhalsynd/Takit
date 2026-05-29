@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/zsh \"/Users/jihun/StudioProjects/Takit/.codex/hooks/release-apk-on-stop.zsh\"",
+            "timeout": 600,
+            "statusMessage": "Takit release APK hook"
+          }
+        ]
+      }
+    ]
+  }
+}

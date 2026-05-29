@@ -619,9 +619,11 @@ public class MainActivity extends Activity {
         if (sortNameButton == null) {
             return;
         }
+        sortNameButton.setText(folderSort == FolderListSort.NAME ? "✓ 이름순" : "이름순");
+        sortModifiedButton.setText(folderSort == FolderListSort.MODIFIED ? "✓ 최근 수정순" : "최근 수정순");
+        directionButton.setText(folderDirection == FolderListDirection.ASCENDING ? "✓ 오름차순" : "✓ 내림차순");
         styleChip(sortNameButton, folderSort == FolderListSort.NAME);
         styleChip(sortModifiedButton, folderSort == FolderListSort.MODIFIED);
-        directionButton.setText(folderDirection == FolderListDirection.ASCENDING ? "오름차순" : "내림차순");
         styleChip(directionButton, true);
     }
 
@@ -830,9 +832,9 @@ public class MainActivity extends Activity {
     }
 
     private void styleChip(TextView button, boolean selected) {
-        button.setTextColor(selected ? Color.WHITE : COLOR_MUTED);
+        button.setTextColor(selected ? Color.WHITE : COLOR_TEXT);
         button.setTypeface(Typeface.DEFAULT, selected ? Typeface.BOLD : Typeface.NORMAL);
-        button.setBackground(rounded(selected ? COLOR_LAVENDER : COLOR_SURFACE, dp(13), selected ? 0 : COLOR_LINE));
+        button.setBackground(rounded(selected ? COLOR_LAVENDER : COLOR_SURFACE, dp(13), selected ? 0xFF7D4ED4 : COLOR_LINE));
     }
 
     private LinearLayout card(int radius) {

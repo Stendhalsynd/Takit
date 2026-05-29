@@ -18,7 +18,7 @@ import com.stendhalsynd.takit.storage.MediaStoreImageWriter;
 public class CaptureActivity extends Activity {
     private static final int REQUEST_CAMERA = 3001;
     private static final int REQUEST_SCREENSHOT = 3002;
-    private static final long SCREENSHOT_CAPTURE_DELAY_MS = 900L;
+    private static final long INITIAL_SCREENSHOT_CAPTURE_DELAY_MS = 1200L;
     private static final String STATE_CAPTURE_STARTED = "state_capture_started";
     private static final String STATE_PENDING_CAMERA_URI = "state_pending_camera_uri";
 
@@ -123,7 +123,9 @@ public class CaptureActivity extends Activity {
         service.putExtra(CaptureActions.EXTRA_RESULT_CODE, resultCode);
         service.putExtra(CaptureActions.EXTRA_RESULT_DATA, data);
         service.putExtra(CaptureActions.EXTRA_FOLDER_PATH, folderRepository.getSelectedFolder().getRelativePath());
-        service.putExtra(CaptureActions.EXTRA_CAPTURE_DELAY_MS, SCREENSHOT_CAPTURE_DELAY_MS);
+        service.putExtra(CaptureActions.EXTRA_CAPTURE_DELAY_MS, INITIAL_SCREENSHOT_CAPTURE_DELAY_MS);
+        service.putExtra(CaptureActions.EXTRA_CAPTURE_AFTER_START, true);
         startForegroundService(service);
+        moveTaskToBack(true);
     }
 }

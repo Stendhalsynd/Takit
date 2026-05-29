@@ -15,29 +15,25 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.stendhalsynd.takit.MainActivity;
 import com.stendhalsynd.takit.R;
 import com.stendhalsynd.takit.capture.CaptureActions;
 import com.stendhalsynd.takit.capture.CaptureActivity;
 import com.stendhalsynd.takit.capture.CaptureNotification;
-import com.stendhalsynd.takit.storage.FolderListDirection;
-import com.stendhalsynd.takit.storage.FolderListItem;
-import com.stendhalsynd.takit.storage.FolderListRules;
-import com.stendhalsynd.takit.storage.FolderListSort;
+import com.stendhalsynd.takit.capture.ScreenshotCaptureService;
+import com.stendhalsynd.takit.capture.ScreenshotSessionRules;
 import com.stendhalsynd.takit.storage.FolderRepository;
 import com.stendhalsynd.takit.storage.GalleryFolder;
 
@@ -58,6 +54,7 @@ public class OverlayBubbleService extends Service {
     private static final int COLOR_SURFACE = 0xFFFFFFFF;
     private static final int COLOR_LINE = 0xFFEFEAF2;
     private static final int BUBBLE_SIZE_DP = 44;
+    private static final long ACTIVE_SESSION_SCREENSHOT_DELAY_MS = 450L;
     private static final int DISMISS_CONTAINER_DP = 160;
     private static final int DISMISS_CIRCLE_DP = 104;
     private static final float DISMISS_SELECTED_SCALE = 1.12f;
@@ -82,7 +79,6 @@ public class OverlayBubbleService extends Service {
     private boolean panelWasAttachedOnTouchDown;
     private boolean miniPanelAttached;
     private boolean dismissAttached;
-    private String miniFolderQuery = "";
     private ValueAnimator bubbleAnimator;
 
     @Override
@@ -357,69 +353,44 @@ public class OverlayBubbleService extends Service {
         actionRow.addView(screenshot, weightParams());
         panel.addView(actionRow);
 
-        TextView folderTitle = text("저장 폴더", 14, Typeface.BOLD, COLOR_TEXT);
+        TextView openApp = pastelButton("앱 열기", COLOR_LAVENDER_SOFT, COLOR_LAVENDER);
+        openApp.setOnClickListener(v -> openApp());
+        LinearLayout.LayoutParams openAppParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(44)
+        );
+        openAppParams.setMargins(dp(5), dp(8), dp(5), 0);
+        panel.addView(openApp, openAppParams);
+
+        TextView folderTitle = text("자주 쓰는 폴더", 14, Typeface.BOLD, COLOR_TEXT);
         folderTitle.setPadding(0, dp(12), 0, dp(6));
         panel.addView(folderTitle);
-
-        EditText search = new EditText(this);
-        search.setHint("DCIM 폴더 검색");
-        search.setSingleLine(true);
-        search.setTextSize(13);
-        search.setText(miniFolderQuery);
-        search.setBackground(rounded(0xFFFCFAFF, dp(12), COLOR_LINE));
-        search.setPadding(dp(12), 0, dp(12), 0);
-        search.clearFocus();
-        panel.addView(search, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(44)));
 
         LinearLayout folderList = new LinearLayout(this);
         folderList.setOrientation(LinearLayout.VERTICAL);
         panel.addView(folderList);
-        renderMiniFolders(folderList, miniFolderQuery);
-
-        search.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable editable) {
-                miniFolderQuery = editable.toString();
-                renderMiniFolders(folderList, miniFolderQuery);
-            }
-        });
+        renderMiniFolders(folderList);
         panel.requestFocus();
         return panel;
     }
 
-    private void renderMiniFolders(LinearLayout folderList, String query) {
+    private void renderMiniFolders(LinearLayout folderList) {
         folderList.removeAllViews();
         FolderRepository repository = new FolderRepository(this);
-        List<FolderListItem> folders = FolderListRules.page(
-                FolderListRules.sort(
-                        FolderListRules.filter(repository.getFolderItems(), query),
-                        FolderListSort.NAME,
-                        FolderListDirection.ASCENDING
-                ),
-                0,
-                5
-        );
+        List<GalleryFolder> folders = repository.getFavoriteFolders();
         if (folders.isEmpty()) {
-            TextView empty = text("검색 결과가 없습니다.", 13, Typeface.NORMAL, COLOR_MUTED);
+            TextView empty = text("폴더 탭에서 주로 쓰는 폴더를 등록하세요.", 13, Typeface.NORMAL, COLOR_MUTED);
             empty.setPadding(dp(4), dp(12), dp(4), dp(8));
             folderList.addView(empty);
             return;
         }
-        for (FolderListItem item : folders) {
-            folderList.addView(miniFolderRow(repository, item));
+        int count = Math.min(5, folders.size());
+        for (int i = 0; i < count; i++) {
+            folderList.addView(miniFolderRow(repository, folders.get(i)));
         }
     }
 
-    private View miniFolderRow(FolderRepository repository, FolderListItem item) {
-        GalleryFolder folder = item.getFolder();
+    private View miniFolderRow(FolderRepository repository, GalleryFolder folder) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -451,16 +422,50 @@ public class OverlayBubbleService extends Service {
     private void launchCapture(String action) {
         hideMiniPanel();
         if (CaptureActions.ACTION_SCREENSHOT.equals(action)) {
-            bubbleView.setVisibility(View.INVISIBLE);
-            handler.postDelayed(() -> {
-                if (bubbleView != null) {
-                    bubbleView.setVisibility(View.VISIBLE);
-                }
-            }, SCREENSHOT_BUBBLE_HIDE_MS);
+            launchScreenshot();
+            return;
         }
         Intent intent = new Intent(this, CaptureActivity.class);
         intent.setAction(action);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    private void launchScreenshot() {
+        hideBubbleForScreenshot();
+        ScreenshotSessionRules.NextStep nextStep = ScreenshotSessionRules.nextStep(
+                ScreenshotCaptureService.isSessionReady()
+        );
+        if (nextStep == ScreenshotSessionRules.NextStep.CAPTURE_WITH_ACTIVE_SESSION) {
+            Intent service = new Intent(this, ScreenshotCaptureService.class);
+            service.setAction(CaptureActions.ACTION_SCREENSHOT_CAPTURE_NOW);
+            service.putExtra(
+                    CaptureActions.EXTRA_FOLDER_PATH,
+                    new FolderRepository(this).getSelectedFolder().getRelativePath()
+            );
+            service.putExtra(CaptureActions.EXTRA_CAPTURE_DELAY_MS, ACTIVE_SESSION_SCREENSHOT_DELAY_MS);
+            startForegroundService(service);
+            return;
+        }
+        Intent intent = new Intent(this, CaptureActivity.class);
+        intent.setAction(CaptureActions.ACTION_SCREENSHOT);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    private void hideBubbleForScreenshot() {
+        bubbleView.setVisibility(View.INVISIBLE);
+        handler.postDelayed(() -> {
+            if (bubbleView != null) {
+                bubbleView.setVisibility(View.VISIBLE);
+            }
+        }, SCREENSHOT_BUBBLE_HIDE_MS);
+    }
+
+    private void openApp() {
+        hideMiniPanel();
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
     }
 
