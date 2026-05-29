@@ -25,6 +25,7 @@ import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -57,13 +58,19 @@ public class OverlayBubbleService extends Service {
     private static final int COLOR_BLUE_SOFT = 0xFFE7EEFF;
     private static final int COLOR_SURFACE = 0xFFFFFFFF;
     private static final int COLOR_LINE = 0xFFEFEAF2;
+    private static final int BUBBLE_SIZE_DP = 44;
+    private static final int DISMISS_CONTAINER_DP = 160;
+    private static final int DISMISS_CIRCLE_DP = 104;
+    private static final float DISMISS_SELECTED_SCALE = 1.12f;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WindowManager windowManager;
     private OverlaySettingsRepository overlaySettingsRepository;
     private ImageView bubbleView;
+    private View miniPanelScrimView;
     private LinearLayout miniPanelView;
-    private TextView dismissTargetView;
+    private FrameLayout dismissTargetView;
+    private TextView dismissTargetCircleView;
     private WindowManager.LayoutParams bubbleParams;
     private WindowManager.LayoutParams miniPanelParams;
     private WindowManager.LayoutParams dismissParams;
@@ -90,8 +97,8 @@ public class OverlayBubbleService extends Service {
         windowManager = getSystemService(WindowManager.class);
         bubbleView = buildBubbleView();
         bubbleParams = new WindowManager.LayoutParams(
-                dp(44),
-                dp(44),
+                dp(BUBBLE_SIZE_DP),
+                dp(BUBBLE_SIZE_DP),
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT
@@ -196,7 +203,7 @@ public class OverlayBubbleService extends Service {
                 if (Math.abs(deltaX) > dp(4) || Math.abs(deltaY) > dp(4)) {
                     moved = true;
                     showDismissTarget();
-                    bubbleParams.x = clamp(initialX + deltaX, 0, Math.max(0, screenWidth() - dp(44)));
+                    bubbleParams.x = clamp(initialX + deltaX, 0, Math.max(0, screenWidth() - dp(BUBBLE_SIZE_DP)));
                     bubbleParams.y = clamp(initialY + deltaY, 0, Math.max(0, screenHeight() - dp(70)));
                     windowManager.updateViewLayout(bubbleView, bubbleParams);
                     updateDismissTargetState();
@@ -235,7 +242,18 @@ public class OverlayBubbleService extends Service {
         if (miniPanelAttached) {
             return;
         }
-        animateBubbleTo((screenWidth() - dp(44)) / 2, dp(28), 180L);
+        animateBubbleTo((screenWidth() - dp(BUBBLE_SIZE_DP)) / 2, dp(28), 180L);
+        miniPanelScrimView = buildMiniPanelScrim();
+        WindowManager.LayoutParams miniPanelScrimParams = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+        );
+        miniPanelScrimParams.gravity = Gravity.TOP | Gravity.START;
+        windowManager.addView(miniPanelScrimView, miniPanelScrimParams);
+
         miniPanelView = buildMiniPanel();
         miniPanelParams = new WindowManager.LayoutParams(
                 Math.min(screenWidth() - dp(36), dp(360)),
@@ -273,14 +291,25 @@ public class OverlayBubbleService extends Service {
         if (miniPanelAttached && windowManager != null && miniPanelView != null) {
             windowManager.removeView(miniPanelView);
         }
+        if (miniPanelAttached && windowManager != null && miniPanelScrimView != null) {
+            windowManager.removeView(miniPanelScrimView);
+        }
         miniPanelAttached = false;
         miniPanelView = null;
+        miniPanelScrimView = null;
         if (bubbleView != null && overlaySettingsRepository != null) {
             bubbleView.animate().alpha(overlaySettingsRepository.getBubbleAlpha()).setDuration(120L).start();
         }
         if (restoreBubble && bubbleView != null && bubbleParams != null) {
             snapBubbleToEdge();
         }
+    }
+
+    private View buildMiniPanelScrim() {
+        View scrim = new View(this);
+        scrim.setBackgroundColor(Color.TRANSPARENT);
+        scrim.setOnClickListener(v -> hideMiniPanel());
+        return scrim;
     }
 
     private LinearLayout buildMiniPanel() {
@@ -295,10 +324,6 @@ public class OverlayBubbleService extends Service {
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = text("Takit", 18, Typeface.BOLD, COLOR_TEXT);
         titleRow.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        TextView close = text("×", 24, Typeface.BOLD, COLOR_MUTED);
-        close.setGravity(Gravity.CENTER);
-        close.setOnClickListener(v -> hideMiniPanel());
-        titleRow.addView(close, new LinearLayout.LayoutParams(dp(40), dp(40)));
         panel.addView(titleRow);
 
         LinearLayout actionRow = horizontal();
@@ -386,7 +411,7 @@ public class OverlayBubbleService extends Service {
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(folder.getDisplayName(), 13, Typeface.BOLD, COLOR_TEXT));
-        copy.addView(text(String.format(Locale.KOREA, "%d개 항목", item.getItemCount()), 11, Typeface.NORMAL, COLOR_MUTED));
+        copy.addView(text(folder.getRelativePath(), 11, Typeface.NORMAL, COLOR_MUTED));
         LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         copyParams.setMargins(dp(10), 0, dp(8), 0);
         row.addView(copy, copyParams);
@@ -421,19 +446,29 @@ public class OverlayBubbleService extends Service {
         if (dismissAttached) {
             return;
         }
-        dismissTargetView = text("끄기", 14, Typeface.BOLD, Color.WHITE);
-        dismissTargetView.setGravity(Gravity.CENTER);
-        dismissTargetView.setBackground(circle(0xCC9B6BE8));
+        int containerSize = dp(DISMISS_CONTAINER_DP);
+        int circleSize = dp(DISMISS_CIRCLE_DP);
+        if (!OverlayDragRules.hasUnclippedScaledCircle(containerSize, circleSize, DISMISS_SELECTED_SCALE)) {
+            containerSize = Math.round(circleSize * DISMISS_SELECTED_SCALE);
+        }
+        dismissTargetView = new FrameLayout(this);
+        dismissTargetView.setClipChildren(false);
+        dismissTargetView.setClipToPadding(false);
+        dismissTargetCircleView = text("끄기", 14, Typeface.BOLD, Color.WHITE);
+        dismissTargetCircleView.setGravity(Gravity.CENTER);
+        dismissTargetCircleView.setBackground(circle(0xCC9B6BE8));
+        FrameLayout.LayoutParams circleParams = new FrameLayout.LayoutParams(circleSize, circleSize, Gravity.CENTER);
+        dismissTargetView.addView(dismissTargetCircleView, circleParams);
         dismissParams = new WindowManager.LayoutParams(
-                dp(104),
-                dp(104),
+                containerSize,
+                containerSize,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT
         );
         dismissParams.gravity = Gravity.TOP | Gravity.START;
-        dismissParams.x = (screenWidth() - dp(104)) / 2;
-        dismissParams.y = screenHeight() - dp(160);
+        dismissParams.x = (screenWidth() - containerSize) / 2;
+        dismissParams.y = screenHeight() - dp(108) - (containerSize / 2);
         windowManager.addView(dismissTargetView, dismissParams);
         dismissAttached = true;
     }
@@ -444,37 +479,38 @@ public class OverlayBubbleService extends Service {
         }
         dismissAttached = false;
         dismissTargetView = null;
+        dismissTargetCircleView = null;
     }
 
     private void updateDismissTargetState() {
-        if (dismissTargetView == null) {
+        if (dismissTargetCircleView == null) {
             return;
         }
         boolean inside = isBubbleInsideDismissTarget();
-        dismissTargetView.setScaleX(inside ? 1.12f : 1f);
-        dismissTargetView.setScaleY(inside ? 1.12f : 1f);
-        dismissTargetView.setBackground(circle(inside ? 0xEE8F55DF : 0xCC9B6BE8));
+        dismissTargetCircleView.setScaleX(inside ? DISMISS_SELECTED_SCALE : 1f);
+        dismissTargetCircleView.setScaleY(inside ? DISMISS_SELECTED_SCALE : 1f);
+        dismissTargetCircleView.setBackground(circle(inside ? 0xEE8F55DF : 0xCC9B6BE8));
     }
 
     private boolean isBubbleInsideDismissTarget() {
         if (dismissParams == null) {
             return false;
         }
-        float bubbleCenterX = bubbleParams.x + dp(22);
-        float bubbleCenterY = bubbleParams.y + dp(22);
-        float targetCenterX = dismissParams.x + dp(52);
-        float targetCenterY = dismissParams.y + dp(52);
+        float bubbleCenterX = bubbleParams.x + (dp(BUBBLE_SIZE_DP) / 2f);
+        float bubbleCenterY = bubbleParams.y + (dp(BUBBLE_SIZE_DP) / 2f);
+        float targetCenterX = dismissParams.x + (dismissParams.width / 2f);
+        float targetCenterY = dismissParams.y + (dismissParams.height / 2f);
         return OverlayDragRules.isInsideDismissCircle(
                 bubbleCenterX,
                 bubbleCenterY,
                 targetCenterX,
                 targetCenterY,
-                dp(52)
+                dp(DISMISS_CIRCLE_DP) / 2f
         );
     }
 
     private void snapBubbleToEdge() {
-        int targetX = bubbleParams.x < screenWidth() / 2 ? dp(12) : Math.max(0, screenWidth() - dp(56));
+        int targetX = bubbleParams.x < screenWidth() / 2 ? dp(12) : Math.max(0, screenWidth() - dp(BUBBLE_SIZE_DP + 12));
         int targetY = clamp(bubbleParams.y, dp(24), Math.max(dp(24), screenHeight() - dp(88)));
         animateBubbleTo(targetX, targetY, 180L);
     }
@@ -511,7 +547,7 @@ public class OverlayBubbleService extends Service {
         button.setTextSize(11);
         button.setTextColor(COLOR_LAVENDER);
         button.setBackground(rounded(COLOR_LAVENDER_SOFT, dp(9), 0));
-        button.setPadding(dp(4), 0, dp(4), 0);
+        button.setPadding(dp(10), 0, dp(10), 0);
         return button;
     }
 
@@ -523,7 +559,7 @@ public class OverlayBubbleService extends Service {
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setMinHeight(0);
         button.setMinimumHeight(0);
-        button.setPadding(dp(6), 0, dp(6), 0);
+        button.setPadding(dp(12), 0, dp(12), 0);
         return button;
     }
 
@@ -546,7 +582,7 @@ public class OverlayBubbleService extends Service {
 
     private LinearLayout.LayoutParams weightParams() {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(44), 1f);
-        params.setMargins(dp(4), 0, dp(4), 0);
+        params.setMargins(dp(5), 0, dp(5), 0);
         return params;
     }
 

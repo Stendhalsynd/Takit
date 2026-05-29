@@ -77,6 +77,7 @@ public class MainActivity extends Activity {
     private TextView pageStatusView;
     private EditText newFolderInput;
     private EditText folderSearchInput;
+    private ScrollView mainScrollView;
     private LinearLayout homeSection;
     private LinearLayout folderSection;
     private LinearLayout settingsSection;
@@ -135,13 +136,13 @@ public class MainActivity extends Activity {
         screen.setOrientation(LinearLayout.VERTICAL);
         screen.setBackgroundColor(COLOR_BACKGROUND);
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.setFillViewport(true);
+        mainScrollView = new ScrollView(this);
+        mainScrollView.setFillViewport(true);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(20), dp(26), dp(20), dp(18));
-        scrollView.addView(root);
-        screen.addView(scrollView, new LinearLayout.LayoutParams(
+        mainScrollView.addView(root);
+        screen.addView(mainScrollView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 0,
                 1f
@@ -194,12 +195,10 @@ public class MainActivity extends Activity {
         TextView subtitle = text("자주 쓰는 폴더로 빠르게 저장하고 관리해요", 14, Typeface.NORMAL, COLOR_MUTED);
         copy.addView(title);
         copy.addView(subtitle);
-        header.addView(copy, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView profile = text("⌕", 26, Typeface.BOLD, COLOR_TEXT);
-        profile.setGravity(Gravity.CENTER);
-        profile.setBackground(rounded(COLOR_SURFACE, dp(18), 0));
-        header.addView(profile, new LinearLayout.LayoutParams(dp(54), dp(54)));
+        header.addView(copy, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
         return header;
     }
 
@@ -278,6 +277,7 @@ public class MainActivity extends Activity {
         Button create = outlineButton("폴더 만들고 선택");
         create.setOnClickListener(v -> createFolder());
         actions.addView(create, weightParams());
+        actions.setPadding(0, dp(10), 0, 0);
         card.addView(actions);
         return card;
     }
@@ -316,6 +316,7 @@ public class MainActivity extends Activity {
         ));
 
         LinearLayout sortRow = horizontal();
+        sortRow.setPadding(0, dp(10), 0, dp(8));
         sortNameButton = chipButton("이름순");
         sortNameButton.setOnClickListener(v -> {
             folderSort = FolderListSort.NAME;
@@ -347,7 +348,7 @@ public class MainActivity extends Activity {
         controls.addView(sortRow);
 
         folderSummaryView = text("", 13, Typeface.BOLD, COLOR_MUTED);
-        folderSummaryView.setPadding(dp(2), dp(8), 0, dp(8));
+        folderSummaryView.setPadding(dp(2), dp(4), 0, dp(10));
         controls.addView(folderSummaryView);
         return controls;
     }
@@ -414,7 +415,12 @@ public class MainActivity extends Activity {
         Button stopOverlay = primaryButton("버블 끄기");
         stopOverlay.setOnClickListener(v -> stopOverlayBubble());
         overlayButtons.addView(stopOverlay, weightParams());
-        card.addView(overlayButtons);
+        LinearLayout.LayoutParams overlayButtonParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        overlayButtonParams.setMargins(0, dp(14), 0, 0);
+        card.addView(overlayButtons, overlayButtonParams);
         return card;
     }
 
@@ -481,8 +487,6 @@ public class MainActivity extends Activity {
         card.setBackground(rounded(colors[index % colors.length], dp(14), 0));
         card.addView(text(folder.getDisplayName(), 14, Typeface.BOLD, COLOR_TEXT));
         card.addView(text(folder.getRelativePath(), 11, Typeface.NORMAL, COLOR_MUTED));
-        FolderListItem item = findItem(folder);
-        card.addView(text(String.format(Locale.KOREA, "%d개 항목", item == null ? 0 : item.getItemCount()), 12, Typeface.BOLD, COLOR_LAVENDER));
         card.setOnClickListener(v -> {
             folderRepository.saveSelectedFolder(folder);
             refreshFolders();
@@ -496,7 +500,7 @@ public class MainActivity extends Activity {
         List<FolderListItem> filtered = FolderListRules.filter(currentFolderItems, folderSearchQuery);
         List<FolderListItem> sorted = FolderListRules.sort(filtered, folderSort, folderDirection);
         int maxPageIndex = FolderListRules.maxPageIndex(sorted.size(), FOLDER_PAGE_SIZE);
-        folderPageIndex = Math.max(0, Math.min(folderPageIndex, maxPageIndex));
+        folderPageIndex = FolderListRules.stablePageIndex(folderPageIndex, sorted.size(), FOLDER_PAGE_SIZE);
         saveFolderViewSettings();
         List<FolderListItem> page = FolderListRules.page(sorted, folderPageIndex, FOLDER_PAGE_SIZE);
 
@@ -522,7 +526,7 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(12), dp(10), dp(8), dp(10));
+        row.setPadding(dp(14), dp(12), dp(12), dp(12));
 
         row.addView(iconTile("□", folderColor(folder), COLOR_LAVENDER));
 
@@ -530,9 +534,8 @@ public class MainActivity extends Activity {
         copy.setOrientation(LinearLayout.VERTICAL);
         copy.addView(text(folder.getDisplayName(), 14, Typeface.BOLD, COLOR_TEXT));
         copy.addView(text(folder.getRelativePath(), 11, Typeface.NORMAL, COLOR_MUTED));
-        copy.addView(text(String.format(Locale.KOREA, "%d개 항목", item.getItemCount()), 11, Typeface.BOLD, COLOR_LAVENDER));
         LinearLayout.LayoutParams copyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        copyParams.setMargins(dp(10), 0, dp(8), 0);
+        copyParams.setMargins(dp(12), 0, dp(10), 0);
         row.addView(copy, copyParams);
 
         Button select = miniButton("선택", true);
@@ -546,12 +549,24 @@ public class MainActivity extends Activity {
         Button favorite = miniButton(folderRepository.isFavorite(folder) ? "해제" : "주로 쓰기", false);
         favorite.setOnClickListener(v -> {
             folderRepository.toggleFavorite(folder);
-            refreshFolders();
+            refreshFoldersPreservingScroll();
         });
-        LinearLayout.LayoutParams favoriteParams = new LinearLayout.LayoutParams(dp(74), dp(34));
-        favoriteParams.setMargins(dp(6), 0, 0, 0);
+        LinearLayout.LayoutParams favoriteParams = new LinearLayout.LayoutParams(dp(86), dp(38));
+        favoriteParams.setMargins(dp(8), 0, 0, 0);
         row.addView(favorite, favoriteParams);
         return row;
+    }
+
+    private void refreshFoldersPreservingScroll() {
+        int scrollY = mainScrollView == null ? 0 : mainScrollView.getScrollY();
+        View focused = getCurrentFocus();
+        if (focused != null) {
+            focused.clearFocus();
+        }
+        refreshFolders();
+        if (mainScrollView != null) {
+            mainScrollView.post(() -> mainScrollView.scrollTo(0, scrollY));
+        }
     }
 
     private void showTab(String tab) {
@@ -696,15 +711,6 @@ public class MainActivity extends Activity {
         return false;
     }
 
-    private FolderListItem findItem(GalleryFolder folder) {
-        for (FolderListItem item : currentFolderItems) {
-            if (item.getFolder().equals(folder)) {
-                return item;
-            }
-        }
-        return null;
-    }
-
     private int folderColor(GalleryFolder folder) {
         int hash = Math.abs(folder.getRelativePath().hashCode());
         int[] colors = {COLOR_LAVENDER_SOFT, COLOR_PINK_SOFT, 0xFFFFEFE2, COLOR_MINT_SOFT, COLOR_BLUE_SOFT, COLOR_YELLOW_SOFT};
@@ -772,9 +778,9 @@ public class MainActivity extends Activity {
     private Button chipButton(String label) {
         Button button = baseButton(label);
         button.setTextSize(12);
-        button.setMinHeight(0);
-        button.setMinimumHeight(0);
-        button.setPadding(dp(4), 0, dp(4), 0);
+        button.setMinHeight(dp(38));
+        button.setMinimumHeight(dp(38));
+        button.setPadding(dp(12), 0, dp(12), 0);
         return button;
     }
 
@@ -783,10 +789,10 @@ public class MainActivity extends Activity {
         button.setTextSize(11);
         button.setMinHeight(0);
         button.setMinimumHeight(0);
-        button.setPadding(dp(4), 0, dp(4), 0);
+        button.setPadding(dp(10), 0, dp(10), 0);
         button.setTextColor(filled ? COLOR_LAVENDER : COLOR_TEXT);
         button.setBackground(rounded(filled ? COLOR_LAVENDER_SOFT : COLOR_SURFACE, dp(9), filled ? 0 : COLOR_LINE));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(54), dp(34));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(62), dp(38));
         button.setLayoutParams(params);
         return button;
     }
@@ -805,6 +811,7 @@ public class MainActivity extends Activity {
         button.setAllCaps(false);
         button.setTextSize(14);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setPadding(dp(16), 0, dp(16), 0);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(48)
@@ -815,8 +822,9 @@ public class MainActivity extends Activity {
     }
 
     private void styleChip(Button button, boolean selected) {
-        button.setTextColor(selected ? COLOR_LAVENDER : COLOR_MUTED);
-        button.setBackground(rounded(selected ? COLOR_LAVENDER_SOFT : COLOR_SURFACE, dp(12), COLOR_LINE));
+        button.setTextColor(selected ? Color.WHITE : COLOR_MUTED);
+        button.setTypeface(Typeface.DEFAULT, selected ? Typeface.BOLD : Typeface.NORMAL);
+        button.setBackground(rounded(selected ? COLOR_LAVENDER : COLOR_SURFACE, dp(13), selected ? 0 : COLOR_LINE));
     }
 
     private LinearLayout card(int radius) {
@@ -842,7 +850,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout.LayoutParams weightParams() {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        params.setMargins(dp(3), 0, dp(3), 0);
+        params.setMargins(dp(5), 0, dp(5), 0);
         return params;
     }
 

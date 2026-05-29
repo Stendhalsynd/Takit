@@ -80,6 +80,10 @@ public final class FolderListRules {
         return (itemCount - 1) / safePageSize;
     }
 
+    public static int stablePageIndex(int currentPageIndex, int itemCount, int pageSize) {
+        return Math.max(0, Math.min(currentPageIndex, maxPageIndex(itemCount, pageSize)));
+    }
+
     public static Set<String> retainAvailableFavorites(Set<String> favorites, Set<String> availablePaths) {
         Set<String> retained = new LinkedHashSet<>();
         for (String path : favorites) {

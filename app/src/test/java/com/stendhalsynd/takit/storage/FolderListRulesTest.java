@@ -91,6 +91,12 @@ public class FolderListRulesTest {
     }
 
     @Test
+    public void keepsCurrentPageWhenFolderStateChangesWithoutChangingListSize() {
+        assertEquals(2, FolderListRules.stablePageIndex(2, 24, 8));
+        assertEquals(1, FolderListRules.stablePageIndex(2, 12, 8));
+    }
+
+    @Test
     public void removesMissingFavoritesAndFallsBackSelectedFolder() {
         Set<String> availablePaths = new LinkedHashSet<>(Arrays.asList(
                 "DCIM/Takit/Inbox/",

@@ -15,4 +15,12 @@ public final class OverlayDragRules {
         float deltaY = bubbleCenterY - circleCenterY;
         return deltaX * deltaX + deltaY * deltaY <= radius * radius;
     }
+
+    public static boolean hasUnclippedScaledCircle(
+            float containerSize,
+            float circleDiameter,
+            float selectedScale
+    ) {
+        return containerSize >= circleDiameter * selectedScale;
+    }
 }
