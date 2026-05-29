@@ -49,16 +49,25 @@ public final class FolderListRules {
         List<FolderListItem> sorted = new ArrayList<>(folders);
         Comparator<FolderListItem> comparator;
         if (sort == FolderListSort.MODIFIED) {
-            comparator = Comparator
-                    .comparingLong(FolderListItem::getLatestModifiedSeconds)
+            comparator = Comparator.comparing(
+                    (FolderListItem item) -> item.getLatestModifiedSeconds() <= 0L
+            );
+            Comparator<FolderListItem> modifiedTimeComparator = Comparator.comparingLong(
+                    FolderListItem::getLatestModifiedSeconds
+            );
+            if (direction == FolderListDirection.DESCENDING) {
+                modifiedTimeComparator = modifiedTimeComparator.reversed();
+            }
+            comparator = comparator
+                    .thenComparing(modifiedTimeComparator)
                     .thenComparing(item -> item.getFolder().getDisplayName(), String.CASE_INSENSITIVE_ORDER);
         } else {
             comparator = Comparator
                     .comparing((FolderListItem item) -> item.getFolder().getDisplayName(), String.CASE_INSENSITIVE_ORDER)
                     .thenComparing(item -> item.getFolder().getRelativePath(), String.CASE_INSENSITIVE_ORDER);
-        }
-        if (direction == FolderListDirection.DESCENDING) {
-            comparator = comparator.reversed();
+            if (direction == FolderListDirection.DESCENDING) {
+                comparator = comparator.reversed();
+            }
         }
         sorted.sort(comparator);
         return sorted;
@@ -82,6 +91,12 @@ public final class FolderListRules {
 
     public static int stablePageIndex(int currentPageIndex, int itemCount, int pageSize) {
         return Math.max(0, Math.min(currentPageIndex, maxPageIndex(itemCount, pageSize)));
+    }
+
+    public static FolderListDirection defaultDirectionForSort(FolderListSort sort) {
+        return sort == FolderListSort.MODIFIED
+                ? FolderListDirection.DESCENDING
+                : FolderListDirection.ASCENDING;
     }
 
     public static Set<String> retainAvailableFavorites(Set<String> favorites, Set<String> availablePaths) {

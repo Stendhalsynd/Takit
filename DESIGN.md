@@ -22,6 +22,8 @@
 - Page padding: 20dp horizontal, 24-28dp vertical
 - Button horizontal padding: 14-16dp for primary/secondary actions, 10-12dp for compact chips.
 - Button groups need visible breathing room: at least 8dp around segmented controls and 12dp between sliders and action rows.
+- Pill controls should use Takit's own TextView-based control style, not Android's default `Button`, to avoid clipped rounded corners and pressed-state vertical jumps.
+- Text inputs need at least 16dp horizontal padding so placeholder text never touches rounded edges.
 
 ## Components
 - Current folder card: icon tile at left, small label, bold folder name, path below, chevron at right.
@@ -30,7 +32,7 @@
 - Favorite folders: pastel compact cards, max three per row, with folder name and relative path. Do not show item counts by default.
 - All gallery folders: white list card with compact rows, folder name, relative path, and select/favorite actions. Do not show item counts by default.
 - Sorting controls: segmented chips with clear spacing. The active sort and direction use a filled lavender state with white text; inactive chips stay white with a subtle border.
-- Bottom navigation: fixed rounded pill with Home, Folder, Settings tabs.
+- Bottom navigation: fixed rounded pill with Home, Folder, Settings tabs. Tab hit areas should be wide and at least 44dp tall.
 - Overlay mini window: centered near the top, white rounded card, same action colors as the main UI. It has no close icon; tapping outside the panel closes it.
 - Bubble dismiss target: bottom-center circular lavender area shown only while dragging. The animated circle must sit inside a larger transparent container so selected-scale animation is never clipped by square window bounds.
 
@@ -38,6 +40,7 @@
 - Do not place decorative controls that look interactive. Header icons must either perform an action or be removed.
 - Gallery folder browsing defaults to `DCIM/` only. `Pictures/` is not part of the default folder list.
 - Folder lists must support search by the text after `DCIM/`, sorting by name or latest modification, and ascending/descending direction.
+- Choosing latest modification sort defaults to newest-first. Folders without modification metadata stay behind folders with real metadata in both directions.
 - Long folder lists are paginated in groups of 8.
 - Favorite toggles must preserve the current folder tab query, sort, direction, page, and scroll position.
-- Bubble actions should never expand off-screen. Clicking the bubble opens the centered mini window; dragging to the bottom dismiss target turns the bubble off.
+- Bubble actions should never expand off-screen. Clicking the bubble opens the centered mini window; closing the mini window returns the bubble to the position it was clicked from. Dragging to the bottom dismiss target turns the bubble off.

@@ -74,6 +74,66 @@ public class FolderListRulesTest {
     }
 
     @Test
+    public void recentModifiedSelectionDefaultsToNewestFirst() {
+        assertEquals(FolderListDirection.ASCENDING, FolderListRules.defaultDirectionForSort(FolderListSort.NAME));
+        assertEquals(FolderListDirection.DESCENDING, FolderListRules.defaultDirectionForSort(FolderListSort.MODIFIED));
+    }
+
+    @Test
+    public void modifiedDescendingKeepsFoldersWithoutMetadataLast() {
+        List<FolderListItem> folders = Arrays.asList(
+                item("DCIM/No Metadata/", 1, 0),
+                item("DCIM/Old/", 1, 10),
+                item("DCIM/New/", 1, 30)
+        );
+
+        List<FolderListItem> sorted = FolderListRules.sort(
+                folders,
+                FolderListSort.MODIFIED,
+                FolderListDirection.DESCENDING
+        );
+
+        assertEquals("New", sorted.get(0).getFolder().getDisplayName());
+        assertEquals("No Metadata", sorted.get(2).getFolder().getDisplayName());
+    }
+
+    @Test
+    public void modifiedAscendingKeepsFoldersWithoutMetadataLast() {
+        List<FolderListItem> folders = Arrays.asList(
+                item("DCIM/No Metadata/", 1, 0),
+                item("DCIM/Old/", 1, 10),
+                item("DCIM/New/", 1, 30)
+        );
+
+        List<FolderListItem> sorted = FolderListRules.sort(
+                folders,
+                FolderListSort.MODIFIED,
+                FolderListDirection.ASCENDING
+        );
+
+        assertEquals("Old", sorted.get(0).getFolder().getDisplayName());
+        assertEquals("No Metadata", sorted.get(2).getFolder().getDisplayName());
+    }
+
+    @Test
+    public void modifiedDescendingUsesNameAscendingForEqualTimestamps() {
+        List<FolderListItem> folders = Arrays.asList(
+                item("DCIM/Bravo/", 1, 20),
+                item("DCIM/Alpha/", 1, 20),
+                item("DCIM/No Metadata/", 1, 0)
+        );
+
+        List<FolderListItem> sorted = FolderListRules.sort(
+                folders,
+                FolderListSort.MODIFIED,
+                FolderListDirection.DESCENDING
+        );
+
+        assertEquals("Alpha", sorted.get(0).getFolder().getDisplayName());
+        assertEquals("Bravo", sorted.get(1).getFolder().getDisplayName());
+    }
+
+    @Test
     public void paginatesWithClampedPageIndex() {
         List<FolderListItem> folders = Arrays.asList(
                 item("DCIM/One/", 1, 1),

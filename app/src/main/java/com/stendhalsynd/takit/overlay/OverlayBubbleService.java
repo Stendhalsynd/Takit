@@ -23,7 +23,6 @@ import android.view.View;
 import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -74,11 +73,13 @@ public class OverlayBubbleService extends Service {
     private WindowManager.LayoutParams bubbleParams;
     private WindowManager.LayoutParams miniPanelParams;
     private WindowManager.LayoutParams dismissParams;
+    private OverlayPanelPositionRules.Position panelReturnPosition;
     private float touchStartX;
     private float touchStartY;
     private int initialX;
     private int initialY;
     private boolean moved;
+    private boolean panelWasAttachedOnTouchDown;
     private boolean miniPanelAttached;
     private boolean dismissAttached;
     private String miniFolderQuery = "";
@@ -190,10 +191,11 @@ public class OverlayBubbleService extends Service {
     private boolean handleBubbleTouch(View view, MotionEvent event) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                hideMiniPanel(false);
+                panelWasAttachedOnTouchDown = miniPanelAttached;
                 moved = false;
                 initialX = bubbleParams.x;
                 initialY = bubbleParams.y;
+                panelReturnPosition = OverlayPanelPositionRules.captureReturnPosition(initialX, initialY);
                 touchStartX = event.getRawX();
                 touchStartY = event.getRawY();
                 return true;
@@ -202,6 +204,9 @@ public class OverlayBubbleService extends Service {
                 int deltaY = Math.round(event.getRawY() - touchStartY);
                 if (Math.abs(deltaX) > dp(4) || Math.abs(deltaY) > dp(4)) {
                     moved = true;
+                    if (miniPanelAttached) {
+                        hideMiniPanel(false);
+                    }
                     showDismissTarget();
                     bubbleParams.x = clamp(initialX + deltaX, 0, Math.max(0, screenWidth() - dp(BUBBLE_SIZE_DP)));
                     bubbleParams.y = clamp(initialY + deltaY, 0, Math.max(0, screenHeight() - dp(70)));
@@ -211,7 +216,11 @@ public class OverlayBubbleService extends Service {
                 return true;
             case MotionEvent.ACTION_UP:
                 if (!moved) {
-                    view.performClick();
+                    if (panelWasAttachedOnTouchDown) {
+                        hideMiniPanel();
+                    } else {
+                        view.performClick();
+                    }
                 } else if (isBubbleInsideDismissTarget()) {
                     overlaySettingsRepository.saveBubbleActive(false);
                     stopSelf();
@@ -222,7 +231,11 @@ public class OverlayBubbleService extends Service {
                 return true;
             case MotionEvent.ACTION_CANCEL:
                 hideDismissTarget();
-                snapBubbleToEdge();
+                if (panelWasAttachedOnTouchDown) {
+                    hideMiniPanel();
+                } else {
+                    snapBubbleToEdge();
+                }
                 return true;
             default:
                 return false;
@@ -242,6 +255,7 @@ public class OverlayBubbleService extends Service {
         if (miniPanelAttached) {
             return;
         }
+        panelReturnPosition = OverlayPanelPositionRules.captureReturnPosition(bubbleParams.x, bubbleParams.y);
         animateBubbleTo((screenWidth() - dp(BUBBLE_SIZE_DP)) / 2, dp(28), 180L);
         miniPanelScrimView = buildMiniPanelScrim();
         WindowManager.LayoutParams miniPanelScrimParams = new WindowManager.LayoutParams(
@@ -301,8 +315,16 @@ public class OverlayBubbleService extends Service {
             bubbleView.animate().alpha(overlaySettingsRepository.getBubbleAlpha()).setDuration(120L).start();
         }
         if (restoreBubble && bubbleView != null && bubbleParams != null) {
-            snapBubbleToEdge();
+            restoreBubbleToPanelOrigin();
         }
+    }
+
+    private void restoreBubbleToPanelOrigin() {
+        if (panelReturnPosition == null) {
+            snapBubbleToEdge();
+            return;
+        }
+        animateBubbleTo(panelReturnPosition.getX(), panelReturnPosition.getY(), 180L);
     }
 
     private View buildMiniPanelScrim() {
@@ -327,10 +349,10 @@ public class OverlayBubbleService extends Service {
         panel.addView(titleRow);
 
         LinearLayout actionRow = horizontal();
-        Button camera = pastelButton("사진 촬영", COLOR_MINT_SOFT, 0xFF2C9A92);
+        TextView camera = pastelButton("사진 촬영", COLOR_MINT_SOFT, 0xFF2C9A92);
         camera.setOnClickListener(v -> launchCapture(CaptureActions.ACTION_CAMERA));
         actionRow.addView(camera, weightParams());
-        Button screenshot = pastelButton("스크린샷", COLOR_BLUE_SOFT, 0xFF486A9F);
+        TextView screenshot = pastelButton("스크린샷", COLOR_BLUE_SOFT, 0xFF486A9F);
         screenshot.setOnClickListener(v -> launchCapture(CaptureActions.ACTION_SCREENSHOT));
         actionRow.addView(screenshot, weightParams());
         panel.addView(actionRow);
@@ -416,13 +438,13 @@ public class OverlayBubbleService extends Service {
         copyParams.setMargins(dp(10), 0, dp(8), 0);
         row.addView(copy, copyParams);
 
-        Button select = smallButton("선택");
+        TextView select = smallButton("선택");
         select.setOnClickListener(v -> {
             repository.saveSelectedFolder(folder);
             Toast.makeText(this, String.format(Locale.KOREA, "%s 선택됨", folder.getDisplayName()), Toast.LENGTH_SHORT).show();
             hideMiniPanel();
         });
-        row.addView(select, new LinearLayout.LayoutParams(dp(58), dp(34)));
+        row.addView(select, new LinearLayout.LayoutParams(dp(64), dp(42)));
         return row;
     }
 
@@ -535,15 +557,15 @@ public class OverlayBubbleService extends Service {
         bubbleAnimator.start();
     }
 
-    private Button pastelButton(String label, int background, int textColor) {
-        Button button = baseButton(label);
+    private TextView pastelButton(String label, int background, int textColor) {
+        TextView button = baseButton(label);
         button.setTextColor(textColor);
         button.setBackground(rounded(background, dp(14), 0));
         return button;
     }
 
-    private Button smallButton(String label) {
-        Button button = baseButton(label);
+    private TextView smallButton(String label) {
+        TextView button = baseButton(label);
         button.setTextSize(11);
         button.setTextColor(COLOR_LAVENDER);
         button.setBackground(rounded(COLOR_LAVENDER_SOFT, dp(9), 0));
@@ -551,14 +573,14 @@ public class OverlayBubbleService extends Service {
         return button;
     }
 
-    private Button baseButton(String label) {
-        Button button = new Button(this);
+    private TextView baseButton(String label) {
+        TextView button = text(label, 13, Typeface.BOLD, COLOR_TEXT);
         button.setText(label);
-        button.setAllCaps(false);
-        button.setTextSize(13);
-        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        button.setMinHeight(0);
-        button.setMinimumHeight(0);
+        button.setGravity(Gravity.CENTER);
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setMinHeight(dp(44));
+        button.setMinimumHeight(dp(44));
         button.setPadding(dp(12), 0, dp(12), 0);
         return button;
     }
