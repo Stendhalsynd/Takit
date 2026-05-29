@@ -19,6 +19,7 @@ public final class FolderRepository {
     private static final String PREFS = "takit_folders";
     private static final String KEY_FOLDERS = "folders";
     private static final String KEY_SELECTED = "selected";
+    private static final String KEY_FAVORITES = "favorites";
 
     private final SharedPreferences preferences;
     private final Context context;
@@ -58,10 +59,33 @@ public final class FolderRepository {
         return folders;
     }
 
+    public List<GalleryFolder> getFavoriteFolders() {
+        Set<String> favoritePaths = new LinkedHashSet<>(preferences.getStringSet(KEY_FAVORITES, Collections.emptySet()));
+        List<GalleryFolder> favorites = new ArrayList<>();
+        for (String path : favoritePaths) {
+            favorites.add(GalleryFolder.fromRelativePath(path));
+        }
+        favorites.sort((left, right) -> left.getDisplayName().compareToIgnoreCase(right.getDisplayName()));
+        return favorites;
+    }
+
     public GalleryFolder addFolder(String displayName) {
         GalleryFolder folder = GalleryFolder.fromDisplayName(displayName);
         saveSelectedFolder(folder);
         return folder;
+    }
+
+    public boolean isFavorite(GalleryFolder folder) {
+        Set<String> favorites = preferences.getStringSet(KEY_FAVORITES, Collections.emptySet());
+        return favorites.contains(folder.getRelativePath());
+    }
+
+    public void toggleFavorite(GalleryFolder folder) {
+        Set<String> favorites = FavoriteFolderRules.toggle(
+                preferences.getStringSet(KEY_FAVORITES, Collections.emptySet()),
+                folder
+        );
+        preferences.edit().putStringSet(KEY_FAVORITES, favorites).apply();
     }
 
     public boolean canReadMediaFolders() {
@@ -116,8 +140,11 @@ public final class FolderRepository {
         folders.add(GalleryFolder.fromDisplayName(GalleryFolder.DEFAULT_NAME).getRelativePath());
         folders.add(GalleryFolder.fromDisplayName("Screenshots").getRelativePath());
         folders.add(GalleryFolder.fromDisplayName("Camera").getRelativePath());
+        Set<String> favorites = new LinkedHashSet<>();
+        favorites.add(GalleryFolder.fromDisplayName(GalleryFolder.DEFAULT_NAME).getRelativePath());
         preferences.edit()
                 .putStringSet(KEY_FOLDERS, folders)
+                .putStringSet(KEY_FAVORITES, favorites)
                 .putString(KEY_SELECTED, GalleryFolder.fromDisplayName(GalleryFolder.DEFAULT_NAME).getRelativePath())
                 .apply();
     }

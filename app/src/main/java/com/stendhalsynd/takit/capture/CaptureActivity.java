@@ -105,7 +105,6 @@ public class CaptureActivity extends Activity {
     private void startScreenshotConsent() {
         captureStarted = true;
         MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
-        Toast.makeText(this, "Android 보안상 화면 캡처 동의가 필요합니다. 전체 화면 공유를 허용해 주세요.", Toast.LENGTH_LONG).show();
         Intent consentIntent;
         if (Build.VERSION.SDK_INT >= 34) {
             consentIntent = manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay());

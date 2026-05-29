@@ -8,8 +8,10 @@ Takit is an Android MVP for quickly sorting screenshots and camera photos into s
 - Import existing `DCIM/...` and `Pictures/...` image folders when media-read permission is granted.
 - Persist the latest selected save folder across app restarts.
 - Enable a floating overlay bubble with quick actions for screenshot and camera capture.
+- Adjust the floating bubble opacity and use a smaller circular bubble mark.
 - Save camera captures directly into the selected MediaStore folder.
 - Capture screenshots through Android's normal MediaProjection consent flow, then save the image into the selected folder.
+- Register frequently used folders for faster switching from the bubble folder button.
 
 ## Build
 
@@ -26,7 +28,7 @@ app/build/outputs/apk/release/app-release.apk
 ## Android Notes
 
 - Silent background screenshots are intentionally unsupported. Takit uses Android's system MediaProjection consent prompt for each screenshot session.
-- On Android 14+, Takit requests default-display capture to avoid the app-only sharing option where supported, but the system consent screen itself is still required by Android.
+- On Android 14+, Takit requests default-display capture to reduce app-only sharing confusion where supported, but the system consent screen itself is still required by Android.
 - The floating bubble requires the Draw over other apps permission.
 - Gallery writes use MediaStore with `RELATIVE_PATH`; the MVP supports Android 10/API 29 and newer.
 - New app-created folders default under `DCIM/Takit/...`; imported folders can include existing `DCIM/...` and `Pictures/...` gallery albums visible through MediaStore permissions.

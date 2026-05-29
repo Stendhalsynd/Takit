@@ -3,5 +3,5 @@
     <string name="notification_channel_capture">Takit capture</string>
     <string name="overlay_notification_title">Takit bubble is active</string>
     <string name="screenshot_notification_title">Saving screenshot</string>
-    <string name="selected_folder_format">현재 저장 위치: %1$s</string>
+    <string name="selected_folder_detail_format">%1$s\n%2$s</string>
 </resources>

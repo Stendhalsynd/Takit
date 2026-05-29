@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.graphics.PixelFormat;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -16,6 +17,7 @@ import android.provider.Settings;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewOutlineProvider;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.ImageView;
@@ -30,11 +32,14 @@ import com.stendhalsynd.takit.capture.CaptureNotification;
 import com.stendhalsynd.takit.storage.FolderRepository;
 
 public class OverlayBubbleService extends Service {
+    public static final String ACTION_UPDATE_SETTINGS = "com.stendhalsynd.takit.action.UPDATE_OVERLAY_SETTINGS";
+
     private static final int NOTIFICATION_ID = 4201;
     private static final long SCREENSHOT_BUBBLE_HIDE_MS = 5500L;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private WindowManager windowManager;
+    private OverlaySettingsRepository overlaySettingsRepository;
     private LinearLayout bubbleView;
     private WindowManager.LayoutParams layoutParams;
     private LinearLayout actionPanel;
@@ -52,9 +57,11 @@ public class OverlayBubbleService extends Service {
             stopSelf();
             return;
         }
+        overlaySettingsRepository = new OverlaySettingsRepository(this);
         startBubbleForeground();
         windowManager = getSystemService(WindowManager.class);
         bubbleView = buildBubbleView();
+        applyOverlaySettings();
         layoutParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -66,10 +73,14 @@ public class OverlayBubbleService extends Service {
         layoutParams.x = dp(18);
         layoutParams.y = dp(120);
         windowManager.addView(bubbleView, layoutParams);
+        overlaySettingsRepository.saveBubbleActive(true);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ACTION_UPDATE_SETTINGS.equals(intent.getAction())) {
+            applyOverlaySettings();
+        }
         return START_STICKY;
     }
 
@@ -82,6 +93,9 @@ public class OverlayBubbleService extends Service {
     public void onDestroy() {
         if (windowManager != null && bubbleView != null) {
             windowManager.removeView(bubbleView);
+        }
+        if (overlaySettingsRepository != null) {
+            overlaySettingsRepository.saveBubbleActive(false);
         }
         super.onDestroy();
     }
@@ -119,7 +133,14 @@ public class OverlayBubbleService extends Service {
         bubble.setImageResource(R.drawable.takit_bubble_icon);
         bubble.setScaleType(ImageView.ScaleType.CENTER_CROP);
         bubble.setBackground(circle(0xFF006D77));
-        root.addView(bubble, new LinearLayout.LayoutParams(dp(56), dp(56)));
+        bubble.setClipToOutline(true);
+        bubble.setOutlineProvider(new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, Outline outline) {
+                outline.setOval(0, 0, view.getWidth(), view.getHeight());
+            }
+        });
+        root.addView(bubble, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
         actionPanel = new LinearLayout(this);
         actionPanel.setOrientation(LinearLayout.VERTICAL);
@@ -142,6 +163,12 @@ public class OverlayBubbleService extends Service {
         bubble.setOnClickListener(view -> togglePanel());
         bubble.setOnTouchListener(this::handleBubbleTouch);
         return root;
+    }
+
+    private void applyOverlaySettings() {
+        if (bubbleView != null && overlaySettingsRepository != null) {
+            bubbleView.setAlpha(overlaySettingsRepository.getBubbleAlpha());
+        }
     }
 
     private boolean handleBubbleTouch(View view, MotionEvent event) {
