@@ -1,0 +1,38 @@
+# Takit Design Guide
+
+## Visual Direction
+- Takit uses a warm, friendly utility style: soft off-white backgrounds, rounded white cards, lavender/mint/pink accents, and dark charcoal text.
+- Screens should feel lightweight and scannable, with key actions grouped into card sections rather than long unstructured forms.
+- Folder rows should look calm and compact, while favorite folders may use pastel cards for quick recognition.
+
+## Tokens
+- Background: `#FFF9F2`
+- Surface: `#FFFFFF`
+- Text primary: `#202033`
+- Text secondary: `#7A7687`
+- Lavender primary: `#9B6BE8`
+- Lavender soft: `#F2ECFF`
+- Mint soft: `#DDF6F2`
+- Blue soft: `#E7EEFF`
+- Pink soft: `#FFE8F2`
+- Yellow soft: `#FFF4CA`
+- Divider: `#EFEAF2`
+- Card radius: 14-18dp
+- Button radius: 12-16dp
+- Page padding: 20dp horizontal, 24-28dp vertical
+
+## Components
+- Current folder card: icon tile at left, small label, bold folder name, path below, chevron at right.
+- Quick actions: two equal-width pastel buttons with a small icon and label.
+- Folder add panel: dashed outline container with two secondary actions for importing/syncing and direct name entry.
+- Favorite folders: pastel compact cards, max three per row, with folder name, relative path, count, and favorite signal.
+- All gallery folders: white list card with compact rows, item count, select/favorite actions, and overflow-style affordance.
+- Bottom navigation: fixed rounded pill with Home, Folder, Settings tabs.
+- Overlay mini window: centered near the top, white rounded card, same action colors as the main UI.
+- Bubble dismiss target: bottom-center circular lavender area shown only while dragging.
+
+## Behavior Rules
+- Gallery folder browsing defaults to `DCIM/` only. `Pictures/` is not part of the default folder list.
+- Folder lists must support search by the text after `DCIM/`, sorting by name or latest modification, and ascending/descending direction.
+- Long folder lists are paginated in groups of 8.
+- Bubble actions should never expand off-screen. Clicking the bubble opens the centered mini window; dragging to the bottom dismiss target turns the bubble off.

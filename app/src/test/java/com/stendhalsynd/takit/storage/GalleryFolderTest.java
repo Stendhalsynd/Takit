@@ -6,7 +6,7 @@ import org.junit.Test;
 
 public class GalleryFolderTest {
     @Test
-    public void fromDisplayNameBuildsPicturesRelativePath() {
+    public void fromDisplayNameBuildsDcimRelativePath() {
         GalleryFolder folder = GalleryFolder.fromDisplayName("Receipts 2026");
 
         assertEquals("Receipts 2026", folder.getDisplayName());
@@ -30,11 +30,11 @@ public class GalleryFolderTest {
     }
 
     @Test
-    public void fromRelativePathUsesFinalFolderAsDisplayName() {
+    public void fromRelativePathRejectsPicturesFoldersByDefault() {
         GalleryFolder folder = GalleryFolder.fromRelativePath("Pictures/Trips/Seoul/");
 
-        assertEquals("Seoul", folder.getDisplayName());
-        assertEquals("Pictures/Trips/Seoul/", folder.getRelativePath());
+        assertEquals("Inbox", folder.getDisplayName());
+        assertEquals("DCIM/Takit/Inbox/", folder.getRelativePath());
     }
 
     @Test

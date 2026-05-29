@@ -3,7 +3,6 @@ package com.stendhalsynd.takit.storage;
 import java.util.Objects;
 
 public final class GalleryFolder {
-    public static final String PICTURES_DIRECTORY = "Pictures";
     public static final String DCIM_DIRECTORY = "DCIM";
     public static final String APP_ROOT = DCIM_DIRECTORY + "/Takit";
     public static final String DEFAULT_NAME = "Inbox";
@@ -73,7 +72,7 @@ public final class GalleryFolder {
         if (relativePath == null) {
             return false;
         }
-        return relativePath.startsWith(DCIM_DIRECTORY + "/") || relativePath.startsWith(PICTURES_DIRECTORY + "/");
+        return relativePath.startsWith(DCIM_DIRECTORY + "/");
     }
 
     @Override
